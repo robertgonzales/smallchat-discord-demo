@@ -1,0 +1,108 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thread</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <a href="/">← Back</a>
+    <main>
+      <ul></ul>
+    </main>
+    <form onsubmit="sendMessage(event)">
+      <textarea
+        name="message"
+        placeholder="Enter a message"
+        required
+      ></textarea>
+      <button>Send message</button>
+    </form>
+    <template id="message">
+      <li>
+        <img alt="avatar" />
+        <div>
+          <h4>From</h4>
+          <p>Message</p>
+        </div>
+      </li>
+    </template>
+    <template id="attachment">
+      <a href="" target="_blank"><img alt="attachment" /></a>
+    </template>
+  </body>
+  <script>
+    let threadId = window.location.pathname.split("/")[2]
+
+    async function renderMessage(message) {
+      let { author, attachments } = message
+      let msgNode = document.querySelector("#message").content.cloneNode(true)
+      if (author.bot) {
+        msgNode.querySelector("h4").textContent = "You"
+      } else {
+        msgNode.querySelector("h4").textContent = author.username
+      }
+      msgNode.querySelector("img").setAttribute("src", author.displayAvatarURL)
+      msgNode.querySelector("p").textContent = message.content
+      if (attachments) {
+        attachments.forEach((attachment) => {
+          let imgNode = document
+            .querySelector("#attachment")
+            .content.cloneNode(true)
+          imgNode.querySelector("a").setAttribute("href", attachment.proxyURL)
+          imgNode.querySelector("img").setAttribute("src", attachment.proxyURL)
+          msgNode.querySelector("div").append(imgNode)
+
+          let imgLoader = new Image()
+          imgLoader.onload = () => scrollToLatest()
+          imgLoader.src = attachment.proxyURL
+        })
+      }
+      document.querySelector("ul").append(msgNode)
+    }
+
+    async function scrollToLatest() {
+      document.querySelector("main").scrollTop =
+        document.querySelector("main").scrollHeight
+    }
+
+    async function sendMessage(e) {
+      e.preventDefault()
+      let message = new FormData(e.target).get("message")
+      let response = await fetch(`/api/thread/${threadId}/send`, {
+        method: "post",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ message }),
+      })
+      let result = await response.json()
+      document.querySelector("textarea").value = ""
+      renderMessage(result.message)
+    }
+
+    async function loadMessages() {
+      let response = await fetch(`/api/thread/${threadId}`)
+      let result = await response.json()
+      result.messages.reverse().forEach(renderMessage)
+
+      let ws = new WebSocket(`ws://localhost:3000/thread/${threadId}`)
+      ws.addEventListener("message", function (event) {
+        let { message } = JSON.parse(event.data)
+        renderMessage(message)
+      })
+    }
+
+    function saveThreads() {
+      let threadIds = {}
+      let threadIdsStr = localStorage.getItem("threadIds")
+      if (threadIdsStr) {
+        threadIds = JSON.parse(threadIdsStr)
+      }
+      threadIds[threadId] = true
+      localStorage.setItem("threadIds", JSON.stringify(threadIds))
+    }
+
+    loadMessages()
+    saveThreads()
+  </script>
+</html>

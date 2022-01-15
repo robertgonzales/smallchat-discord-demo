@@ -1,0 +1,42 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smallchat Discord Demo</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <ul></ul>
+    <form action="/api/thread/create" method="post">
+      <input name="name" placeholder="Name" required />
+      <input name="email" type="email" placeholder="Email" required />
+      <textarea
+        name="message"
+        placeholder="Enter your message"
+        required
+      ></textarea>
+      <button>Create thread</button>
+    </form>
+    <template id="thread">
+      <li>
+        <a>Name</a>
+      </li>
+    </template>
+    <script>
+      async function loadThreads() {
+        let threadIdsStr = localStorage.getItem("threadIds")
+        if (threadIdsStr) {
+          let threadIds = JSON.parse(threadIdsStr)
+          let threads = Object.keys(threadIds).forEach((threadId) => {
+            let node = document.querySelector("#thread").content.cloneNode(true)
+            node.querySelector("a").setAttribute("href", `/thread/${threadId}`)
+            node.querySelector("a").textContent = threadId
+            document.querySelector("ul").append(node)
+          })
+        }
+      }
+      loadThreads()
+    </script>
+  </body>
+</html>
